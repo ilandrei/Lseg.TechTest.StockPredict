@@ -2,6 +2,17 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lseg.TechTest.StockPredict", "Lseg.TechTest.StockPredict\Lseg.TechTest.StockPredict.csproj", "{1558D2DE-6952-4BFD-A618-D080F43C8C41}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lseg.TechTest.StockPredict.Service", "Lseg.TechTest.StockPredict.Service\Lseg.TechTest.StockPredict.Service.csproj", "{BCD70DF2-3EDC-43DD-B115-4FFE9B45E9A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lseg.TechTest.StockPredict.Data", "Lseg.TechTest.StockPredict.Data\Lseg.TechTest.StockPredict.Data.csproj", "{22515EBA-7BB7-4BD1-9183-39471728B490}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lseg.TechTest.StockPredict.Shared", "Lseg.TechTest.StockPredict.Shared\Lseg.TechTest.StockPredict.Shared.csproj", "{92CC2AB7-33DD-4E78-B0AC-41BF1EDE6573}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{566B4A4D-4025-4055-8AA9-BDBD68B046FB}"
+	ProjectSection(SolutionItems) = preProject
+		docker-compose.yml = docker-compose.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +23,17 @@ Global
 		{1558D2DE-6952-4BFD-A618-D080F43C8C41}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1558D2DE-6952-4BFD-A618-D080F43C8C41}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1558D2DE-6952-4BFD-A618-D080F43C8C41}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCD70DF2-3EDC-43DD-B115-4FFE9B45E9A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCD70DF2-3EDC-43DD-B115-4FFE9B45E9A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCD70DF2-3EDC-43DD-B115-4FFE9B45E9A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCD70DF2-3EDC-43DD-B115-4FFE9B45E9A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{22515EBA-7BB7-4BD1-9183-39471728B490}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{22515EBA-7BB7-4BD1-9183-39471728B490}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{22515EBA-7BB7-4BD1-9183-39471728B490}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{22515EBA-7BB7-4BD1-9183-39471728B490}.Release|Any CPU.Build.0 = Release|Any CPU
+		{92CC2AB7-33DD-4E78-B0AC-41BF1EDE6573}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{92CC2AB7-33DD-4E78-B0AC-41BF1EDE6573}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{92CC2AB7-33DD-4E78-B0AC-41BF1EDE6573}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{92CC2AB7-33DD-4E78-B0AC-41BF1EDE6573}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

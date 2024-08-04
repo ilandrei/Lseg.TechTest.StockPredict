@@ -1,0 +1,12 @@
+﻿services:
+  lseg.techtest.stockpredict:
+    image: lseg.techtest.stockpredict
+    build:
+      context: .
+      dockerfile: Lseg.TechTest.StockPredict/Dockerfile
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - /Users/andreiilie/Desktop/Repos/stocktestdata:/app/data
+      - /Users/andreiilie/Desktop/Repos/stocktestoutput:/app/output

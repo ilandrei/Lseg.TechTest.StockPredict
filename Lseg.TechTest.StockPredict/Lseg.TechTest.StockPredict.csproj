@@ -5,10 +5,29 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <InvariantGlobalization>true</InvariantGlobalization>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="CSharpFunctionalExtensions" Version="2.42.5" />
+        <PackageReference Include="Serilog" Version="4.0.2-dev-02220" />
+        <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.1-dev-10398" />
+        <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.2" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Lseg.TechTest.StockPredict.Data\Lseg.TechTest.StockPredict.Data.csproj" />
+      <ProjectReference Include="..\Lseg.TechTest.StockPredict.Service\Lseg.TechTest.StockPredict.Service.csproj" />
+      <ProjectReference Include="..\Lseg.TechTest.StockPredict.Shared\Lseg.TechTest.StockPredict.Shared.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Include="..\.dockerignore">
+        <Link>.dockerignore</Link>
+      </Content>
     </ItemGroup>
 
 </Project>
