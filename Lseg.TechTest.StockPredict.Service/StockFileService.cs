@@ -27,6 +27,7 @@ public class StockFileService(IStockFileRepository stockFileRepository,IPredicti
                     with {DirectoryFilePaths = exchangeFolder.DirectoryFilePaths.OrderBy(e => e).Take(maxStockFilesPerExchange).ToList()}))
             .Bind(async exchangeFolders =>
             {
+                //for each exchange, get the file contents, failing if any of them are not in the right format
                 var fileContents = new List<StockFileModel>();
 
                 foreach (var exchange in exchangeFolders)
@@ -45,6 +46,7 @@ public class StockFileService(IStockFileRepository stockFileRepository,IPredicti
             })
             .Bind(async fileModels =>
             {
+                //create the folder structure and save the files
                 var baseFolderName = DateTime.UtcNow.ToString("yyyyMMddTHHmmss");
                 var createFoldersResult =
                     stockFileRepository.CreateOutputFolders(baseFolderName,

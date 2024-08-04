@@ -14,7 +14,7 @@ public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogg
 {
     private readonly string _basePath = options.Value.RootPath;
     private readonly string _outputPath = options.Value.OutputPath;
-    private readonly int _smallFileSizeThreshold = 0;//options.Value.SmallFileSizeThreshold;
+    private readonly int _smallFileSizeThreshold = options.Value.SmallFileSizeThreshold;
     private readonly int _previousLineCountUsedForPrediction = options.Value.PreviousLineCountUsedForPrediction;
     private readonly Random _random = new();
 
