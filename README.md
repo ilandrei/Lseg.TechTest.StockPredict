@@ -12,8 +12,8 @@ Docker required
 ```bash
   code docker-compose.yml
 ```
-Edit volumes to be valid paths on your local machine, then save.
-
+Edit volumes to be valid paths on your local machine instead of '/Users/andreiilie/Desktop/Repos/stocktestdata', then save.
+The first folder will need to be populated with the test data provided with the technical requirements (folders LSE,NASDAQ,NYSE, each of them containing the CSV files)
 ```bash
 docker-compose up
 ```
