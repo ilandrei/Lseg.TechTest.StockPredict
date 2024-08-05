@@ -2,7 +2,7 @@ using System.Net;
 
 namespace Lseg.TechTest.StockPredict.Shared;
 
-public sealed class Error(HttpStatusCode httpStatusCode, string message, Exception? exception = null)
+public sealed class Error
 {
     public Error(Exception exception)
         : this(HttpStatusCode.BadRequest, string.Empty, exception)
@@ -20,9 +20,16 @@ public sealed class Error(HttpStatusCode httpStatusCode, string message, Excepti
     {
     }
 
-    public HttpStatusCode HttpStatusCode { get; } = httpStatusCode;
+    public Error(HttpStatusCode httpStatusCode, string message, Exception? exception = null)
+    {
+        HttpStatusCode = httpStatusCode;
+        Message = message;
+        Exception = exception;
+    }
 
-    public string Message { get; } = message;
+    public HttpStatusCode HttpStatusCode { get; }
 
-    public Exception? Exception { get; } = exception;
+    public string Message { get; }
+
+    public Exception? Exception { get; }
 }

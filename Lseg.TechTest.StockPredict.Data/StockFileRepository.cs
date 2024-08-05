@@ -10,47 +10,55 @@ using Microsoft.Extensions.Options;
 
 namespace Lseg.TechTest.StockPredict.Data;
 
-public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogger<StockFileRepository> logger):IStockFileRepository
+public class StockFileRepository :IStockFileRepository
 {
-    private readonly string _basePath = options.Value.RootPath;
-    private readonly string _outputPath = options.Value.OutputPath;
-    private readonly int _smallFileSizeThreshold = options.Value.SmallFileSizeThreshold;
-    private readonly int _previousLineCountUsedForPrediction = options.Value.PreviousLineCountUsedForPrediction;
+    private readonly string _basePath;
+    private readonly string _outputPath;
+    private readonly int _smallFileSizeThreshold;
+    private readonly int _previousLineCountUsedForPrediction;
+    
     private readonly Random _random = new();
+    private readonly ILogger<StockFileRepository> _logger;
 
-    public Result<List<StockDirectoryFilesModel>, Error> ParseStockDirectory()
+    public StockFileRepository(IOptions<StockFileConfigSection> options, ILogger<StockFileRepository> logger)
     {
-        List<string> exchangeDirectories;
+        _logger = logger;
+        _basePath = options.Value.RootPath;
+        _outputPath = options.Value.OutputPath;
+        _smallFileSizeThreshold = options.Value.SmallFileSizeThreshold;
+        _previousLineCountUsedForPrediction = options.Value.PreviousLineCountUsedForPrediction;
+    }
+
+    public Result<List<DirectoryFilesModel>, Error> GetAllCsvFromBaseDirectory()
+    {
+        List<string> subDirectories;
         try
         {
             if (!Directory.Exists(_basePath))
-                return new Error(HttpStatusCode.InternalServerError, "Stocks input directory does not exist");
-            exchangeDirectories = Directory.EnumerateDirectories(_basePath).ToList();
+                return new Error(HttpStatusCode.InternalServerError, "Base directory does not exist");
+            subDirectories = Directory.EnumerateDirectories(_basePath,"*",SearchOption.AllDirectories).ToList();
+            subDirectories.Add(_basePath);
         }
         catch (Exception e) when (e is SecurityException or UnauthorizedAccessException)
         {
-            logger.LogError(e,"Error loading stock directory {Message}",e.Message);
+            _logger.LogError(e,"Error loading base directory {Message}",e.Message);
             return new Error(HttpStatusCode.InternalServerError,
-                "There was an error opening the base stock directory. Server doesn't have required permissions.");
+                "There was an error opening the base directory. Server doesn't have required permissions.");
         }
-
-        if (exchangeDirectories.Count == 0)
-            return new Error(HttpStatusCode.BadRequest, "Input has no exchange directories.");
-
+        
         try
         {
-            return exchangeDirectories.Select(exchange =>
+            return subDirectories.Select(sd =>
             {
-                var directory = new DirectoryInfo(exchange);
-                return new StockDirectoryFilesModel(DirectoryName: directory.Name,
-                    DirectoryFilePaths: directory.GetFiles("*.csv").Select(file => file.FullName).ToList());
+                var files = Directory.EnumerateFiles(sd, "*.csv", SearchOption.TopDirectoryOnly);
+                return new DirectoryFilesModel(sd, files.Select(Path.GetFileName).ToList()!);
             }).ToList();
         }
         catch (Exception e) when (e is SecurityException or UnauthorizedAccessException)
         {
-            logger.LogError(e, "Error loading exchange directory {Message}", e.Message);
+            _logger.LogError(e,"Error loading sub directory {Message}",e.Message);
             return new Error(HttpStatusCode.InternalServerError,
-                "There was an error opening an exchange directory. Server doesn't have required permissions.");
+                "There was an error opening a sub directory. Server doesn't have required permissions.");
         }
     }
     
@@ -66,7 +74,7 @@ public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogg
 
     }
 
-    public UnitResult<Error> CreateOutputFolders(string baseFolderName, List<string> exchangeList)
+    public UnitResult<Error> CreateOutputFolders(string baseFolderName, List<string> previousPaths)
     {
         if (!Directory.Exists(_outputPath)) return new Error(HttpStatusCode.NotFound, "Output folder doesn't exist");
         if (Directory.Exists(Path.Combine(_outputPath, baseFolderName)))
@@ -74,20 +82,25 @@ public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogg
 
         try
         {
-            foreach (var exchange in exchangeList)
+            foreach (var relativePreviousPath in previousPaths
+                         .Select(previousPath => previousPath.Replace(_basePath, "")
+                             .TrimStart(Path.DirectorySeparatorChar)
+                             .TrimStart(Path.AltDirectorySeparatorChar)
+                         ))
             {
-                Directory.CreateDirectory(Path.Combine(_outputPath, baseFolderName, exchange));
+                var newPath = Path.Combine(_outputPath, baseFolderName, relativePreviousPath);
+                Directory.CreateDirectory(newPath);
             }
         }
         catch (Exception e) when (e is UnauthorizedAccessException or SecurityException)
         {
-            logger.LogError(e, "Error creating exchange directory {Message}", e.Message);
+            _logger.LogError(e, "Error creating exchange directory {Message}", e.Message);
             return new Error(HttpStatusCode.InternalServerError,
                 "There was an error creating an exchange directory. Server doesn't have required permissions.");
         }
         catch (Exception e) when (e is NotSupportedException or IOException)
         {
-            logger.LogError(e, "Error creating exchange directory {Message}", e.Message);
+            _logger.LogError(e, "Error creating exchange directory {Message}", e.Message);
             return new Error(HttpStatusCode.InternalServerError,
                 "There was an error creating an exchange directory. Directory path is invalid.");
         }
@@ -95,14 +108,17 @@ public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogg
         return UnitResult.Success<Error>();
     }
 
-    public async Task<UnitResult<Error>> SaveStockFiles(IEnumerable<Tuple<string, List<StockFileLineModel>>> stockFiles)
+    public async Task<UnitResult<Error>> SaveStockFiles(string baseFolderName, List<CsvFileModel> fileModels)
     {
         try
         {
-            foreach (var (path,lines) in stockFiles)
+            foreach (var (previousPath,lines) in fileModels)
             {
-                var finalPath = Path.Combine(_outputPath, path);
-
+                var previousRelativePath = previousPath.Replace(_basePath, "")
+                    .TrimStart(Path.DirectorySeparatorChar)
+                    .TrimStart(Path.AltDirectorySeparatorChar);
+                var finalPath = Path.Combine(_outputPath, baseFolderName, previousRelativePath);
+                
                 await using var resultFile = File.CreateText(finalPath);
                 foreach (var content in lines.Select(line =>
                              $"{line.CompanyTicker},{line.TimeStamp:dd-MM-yyyy},{Math.Round(line.StockValue, 2)}"))
@@ -113,13 +129,13 @@ public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogg
         }
         catch (Exception e) when (e is UnauthorizedAccessException or SecurityException)
         {
-            logger.LogError(e, "Error creating stock file {Message}", e.Message);
+            _logger.LogError(e, "Error creating stock file {Message}", e.Message);
             return new Error(HttpStatusCode.InternalServerError,
                 "There was an error creating a stock file. Server doesn't have required permissions.");
         }
         catch (Exception e) when (e is NotSupportedException or IOException)
         {
-            logger.LogError(e, "Error creating stock file {Message}", e.Message);
+            _logger.LogError(e, "Error creating stock file {Message}", e.Message);
             return new Error(HttpStatusCode.InternalServerError,
                 "There was an error creating a stock file. Directory path is invalid.");
         }
@@ -136,7 +152,7 @@ public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogg
             .Map(fileLines =>
             {
                 var startIndex = _random.Next(0, fileLines.Count - _previousLineCountUsedForPrediction);
-                return fileLines[startIndex..(startIndex+_previousLineCountUsedForPrediction)];
+                return fileLines.Skip(startIndex).Take(_previousLineCountUsedForPrediction).ToList();
             });
     }
 
@@ -174,7 +190,7 @@ public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogg
         }
         catch (IOException e)
         {
-            logger.LogError(e,"Error loading stock file {Message}",e.Message);
+            _logger.LogError(e,"Error loading stock file {Message}",e.Message);
             return new Error(HttpStatusCode.InternalServerError,
                 "There was an error opening the file. Try changing the file permissions.");
         }
@@ -198,7 +214,7 @@ public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogg
         } //at this point we're sure the file exists
         catch (IOException e)
         {
-            logger.LogError(e,"Error loading stock file {Message}",e.Message);
+            _logger.LogError(e,"Error loading stock file {Message}",e.Message);
             return new Error(HttpStatusCode.InternalServerError,
                 "There was an error opening the file. Try changing the file permissions.");
         }
@@ -225,7 +241,7 @@ public class StockFileRepository(IOptions<StockFileConfigSection> options, ILogg
         }
         catch (IOException e)
         {
-            logger.LogError(e,"Error loading stock file {Message}",e.Message);
+            _logger.LogError(e,"Error loading stock file {Message}",e.Message);
             return new Error(HttpStatusCode.InternalServerError,
                 "There was an error opening the file. Try changing the file permissions.");
             

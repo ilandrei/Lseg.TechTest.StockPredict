@@ -7,5 +7,5 @@ namespace Lseg.TechTest.StockPredict.Service.Interfaces;
 
 public interface IStockFileService
 {
-    Task<Result<List<StockFileModel>, Error>> GenerateSampleDataFromStocks(int maxStockFilesPerExchange,int? predictionCount = null,PredictionAlgorithm predictionAlgorithm = PredictionAlgorithm.Primitive);
+    Task<Result<List<CsvFileModel>, Error>> GenerateSampleDataFromStocks(int maxStockFilesPerExchange,int? predictionCount = null,PredictionAlgorithm predictionAlgorithm = PredictionAlgorithm.Primitive);
 }

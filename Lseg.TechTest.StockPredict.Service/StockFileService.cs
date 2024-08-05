@@ -8,64 +8,72 @@ using Lseg.TechTest.StockPredict.Shared.Enums;
 
 namespace Lseg.TechTest.StockPredict.Service;
 
-public class StockFileService(IStockFileRepository stockFileRepository,IPredictionService predictionService):IStockFileService
+public class StockFileService :IStockFileService
 {
-    public async Task<Result<List<StockFileModel>,Error>> GenerateSampleDataFromStocks(int maxStockFilesPerExchange, 
+    private readonly IStockFileRepository _stockFileRepository;
+    private readonly IPredictionService _predictionService;
+
+    public StockFileService(IStockFileRepository stockFileRepository,IPredictionService predictionService)
+    {
+        _stockFileRepository = stockFileRepository;
+        _predictionService = predictionService;
+    }
+
+    public async Task<Result<List<CsvFileModel>,Error>> GenerateSampleDataFromStocks(int maxStockFilesPerExchange, 
         int? predictionCount = null, PredictionAlgorithm predictionAlgorithm = PredictionAlgorithm.Primitive)
     {
         if (maxStockFilesPerExchange <= 0)
             return new Error(HttpStatusCode.BadRequest, "maxStockFilesPerExchange must be 1 or more");
-        return await stockFileRepository.ParseStockDirectory()
-            .Ensure(exchangeFolders => 
-                    //make sure all exchange stocks contain at least 1 file
-                    exchangeFolders.Select(ef => ef.DirectoryFilePaths)
-                        .All(folderContents => folderContents.Count != 0),
-                new Error(HttpStatusCode.BadRequest,"Exchange directories must not be empty"))
-            .Map(exchangeFolders => 
+        
+        var baseOutputFolderName = DateTime.UtcNow.ToString("yyyyMMddTHHmmss");
+        
+        return await _stockFileRepository.GetAllCsvFromBaseDirectory()
+            .Map(subFolders => 
+                    //remove subfolders that don't contain at least 1 file
+                    subFolders.Where(sf => sf.DirectoryFileNames.Count != 0).ToList())
+            .Map(subFolders => 
                 //process only maxStockFilesPerExchange files per folder
-                exchangeFolders.Select(exchangeFolder => exchangeFolder 
-                    with {DirectoryFilePaths = exchangeFolder.DirectoryFilePaths.OrderBy(e => e).Take(maxStockFilesPerExchange).ToList()}))
-            .Bind(async exchangeFolders =>
+                subFolders.Select(exchangeFolder => exchangeFolder 
+                    with {DirectoryFileNames = exchangeFolder.DirectoryFileNames.OrderBy(e => e).Take(maxStockFilesPerExchange).ToList()}))
+            .Bind(async subFolders =>
             {
                 //for each exchange, get the file contents, failing if any of them are not in the right format
-                var fileContents = new List<StockFileModel>();
+                var fileContents = new List<CsvFileModel>();
 
-                foreach (var exchange in exchangeFolders)
+                foreach (var subFolder in subFolders)
                 {
-                    foreach (var stockFilePath in exchange.DirectoryFilePaths)
+                    foreach (var filePath in subFolder.DirectoryFileNames.Select(file => Path.Combine(subFolder.DirectoryPath, file)))
                     {
-                        var contents = await GetFileContent(stockFilePath,predictionCount,predictionAlgorithm);
-                        if (contents.IsFailure) return Result.Failure<List<StockFileModel>,Error>(contents.Error);
-                        var resultingFileContent = new StockFileModel(ExchangeName: exchange.DirectoryName,
-                            StockTicker: Path.GetFileName(stockFilePath), Contents: contents.Value);
+                        var contents = await GetFileContent(filePath,predictionCount,predictionAlgorithm);
+                        if (contents.IsFailure) return Result.Failure<List<CsvFileModel>,Error>(contents.Error);
+                        var resultingFileContent = new CsvFileModel(FilePath:filePath, Contents: contents.Value);
                         
                         fileContents.Add(resultingFileContent);
                     }
                 }
-                return Result.Success<List<StockFileModel>,Error>(fileContents);
+                return Result.Success<List<CsvFileModel>,Error>(fileContents);
+            })
+            .Bind(fileModels =>
+            {
+                //create the folder structure and save the files
+                var createFoldersResult =
+                    _stockFileRepository.CreateOutputFolders(baseOutputFolderName,
+                        fileModels.Select(fm => Directory.GetParent(fm.FilePath)!.FullName).Distinct().ToList());
+                return createFoldersResult.IsFailure ? Result.Failure<List<CsvFileModel>,Error>(createFoldersResult.Error) : fileModels;
             })
             .Bind(async fileModels =>
             {
-                //create the folder structure and save the files
-                var baseFolderName = DateTime.UtcNow.ToString("yyyyMMddTHHmmss");
-                var createFoldersResult =
-                    stockFileRepository.CreateOutputFolders(baseFolderName,
-                        fileModels.Select(fm => fm.ExchangeName).ToList());
-                if(createFoldersResult.IsFailure) return Result.Failure<List<StockFileModel>,Error>(createFoldersResult.Error);
-
-                var saveFilesResult = await stockFileRepository.SaveStockFiles(fileModels.Select(fm =>
-                    new Tuple<string, List<StockFileLineModel>>(
-                        Path.Combine(baseFolderName, fm.ExchangeName, fm.StockTicker), fm.Contents)));
+                var saveFilesResult = await _stockFileRepository.SaveStockFiles(baseOutputFolderName,fileModels);
                 
-                return saveFilesResult.IsFailure ? Result.Failure<List<StockFileModel>,Error>(saveFilesResult.Error) : 
-                    Result.Success<List<StockFileModel>,Error>(fileModels);
+                return saveFilesResult.IsFailure ? Result.Failure<List<CsvFileModel>,Error>(saveFilesResult.Error) : 
+                    Result.Success<List<CsvFileModel>,Error>(fileModels);
             })
             ;
     }
 
     private async Task<Result<List<StockFileLineModel>,Error>> GetFileContent(string path, int? predictionCount = null, 
         PredictionAlgorithm predictionAlgorithm = PredictionAlgorithm.Primitive)
-        => await stockFileRepository.GetStockFileRandomLines(path)
+        => await _stockFileRepository.GetStockFileRandomLines(path)
             .Bind(stocks => predictionCount == null? Result.Success<List<StockFileLineModel>,Error>(stocks) 
-                : predictionService.PredictStocks(stocks,predictionAlgorithm,predictionCount.Value));
+                : _predictionService.PredictStocks(stocks,predictionAlgorithm,predictionCount.Value));
 }

@@ -6,8 +6,8 @@ namespace Lseg.TechTest.StockPredict.Data.Interfaces;
 
 public interface IStockFileRepository
 {
-    Result<List<StockDirectoryFilesModel>, Error> ParseStockDirectory();
+    Result<List<DirectoryFilesModel>, Error> GetAllCsvFromBaseDirectory();
     Task<Result<List<StockFileLineModel>, Error>> GetStockFileRandomLines(string path);
-    UnitResult<Error> CreateOutputFolders(string baseFolderName, List<string> toList);
-    Task<UnitResult<Error>> SaveStockFiles(IEnumerable<Tuple<string, List<StockFileLineModel>>> select);
+    UnitResult<Error> CreateOutputFolders(string baseFolderName, List<string> previousPaths);
+    Task<UnitResult<Error>> SaveStockFiles(string baseFolderName, List<CsvFileModel> fileModels);
 }
